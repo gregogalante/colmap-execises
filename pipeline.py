@@ -2,15 +2,23 @@ import os
 import time
 import shutil
 import pycolmap
+import numpy as np
 from PIL import Image
+from scipy.spatial import cKDTree
 
 from libs.read_write_model import read_cameras_binary, write_cameras_text, read_images_binary, write_images_text
 
 IMAGE_MAX_DIMENSION = 1024
 
 DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
+
+# Change configs
+# -----------------------------------------------------------------------------
+
 DATASET_PATH = os.path.join(DATASETS_PATH, 'banana')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
-DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
+DATASET_RESET = False  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
+
+# -----------------------------------------------------------------------------
 
 TRAIN_PATH = os.path.join(DATASET_PATH, 'train')
 IMAGES_PATH = os.path.join(DATASET_PATH, 'images')
@@ -223,20 +231,22 @@ def build_sfm_reconstruction_transforms_json():
 
 if __name__ == "__main__":
   time_start = time.time()
-  print_step("Build Images")
+  print_step("🚀 Build Images")
   build_images()
-  print_step("Extract Features")
+  print_step("🚀 Extract Features")
   extract_features()
-  print_step("Match Features")
+  print_step("🚀 Match Features")
   match_features()
-  print_step("Build SFM Reconstruction")
+  print_step("🚀 Build SFM Reconstruction")
   build_sfm_reconstruction()
-  print_step("Build SFM Reconstruction PLY")
+  print_step("🚀 Build SFM Reconstruction PLY")
   build_sfm_reconstruction_ply()
-  print_step("Build SFM Reconstruction TXT")
+  print_step("🚀 Build SFM Reconstruction TXT")
   build_sfm_reconstruction_txt()
-  print_step("Build SFM Reconstruction transforms.json")
+  print_step("🚀 Build SFM Reconstruction transforms.json")
   build_sfm_reconstruction_transforms_json()
+
+  print_step("✅ Pipeline completed")
   time_end = time.time()
   time_total = time_end - time_start
-  print_info(f"Total execution time: {time_total:.2f} seconds")
+  print_success(f"Total execution time: {time_total:.2f} seconds")
