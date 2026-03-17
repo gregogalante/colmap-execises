@@ -8,7 +8,7 @@ from libs.read_write_model import read_cameras_binary, write_cameras_text, read_
 IMAGE_MAX_DIMENSION = 1024
 
 DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
-DATASET_PATH = os.path.join(DATASETS_PATH, 'over-office')
+DATASET_PATH = os.path.join(DATASETS_PATH, 'banana')
 
 TRAIN_PATH = os.path.join(DATASET_PATH, 'train')
 IMAGES_PATH = os.path.join(DATASET_PATH, 'images')
