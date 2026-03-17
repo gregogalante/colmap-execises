@@ -5,8 +5,6 @@
 ```bash
 # dipendenze base
 pip3 install pycolmap pillow
-# dipendenze per dense reconstruction custom cpu
-pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
 ```
 
 ## Util links

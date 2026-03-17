@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import pycolmap
 from PIL import Image
@@ -8,7 +9,7 @@ from libs.read_write_model import read_cameras_binary, write_cameras_text, read_
 IMAGE_MAX_DIMENSION = 1024
 
 DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
-DATASET_PATH = os.path.join(DATASETS_PATH, 'home')
+DATASET_PATH = os.path.join(DATASETS_PATH, 'south-building')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
 DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
 
 TRAIN_PATH = os.path.join(DATASET_PATH, 'train')
@@ -221,6 +222,7 @@ def build_sfm_reconstruction_transforms_json():
 ##############################################################################
 
 if __name__ == "__main__":
+  time_start = time.time()
   print_step("Build Images")
   build_images()
   print_step("Extract Features")
@@ -235,3 +237,6 @@ if __name__ == "__main__":
   build_sfm_reconstruction_txt()
   print_step("Build SFM Reconstruction transforms.json")
   build_sfm_reconstruction_transforms_json()
+  time_end = time.time()
+  time_total = time_end - time_start
+  print_info(f"Total execution time: {time_total:.2f} seconds")
