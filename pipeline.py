@@ -9,7 +9,7 @@ from libs.read_write_model import read_cameras_binary, write_cameras_text, read_
 IMAGE_MAX_DIMENSION = 1024
 
 DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
-DATASET_PATH = os.path.join(DATASETS_PATH, 'south-building')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
+DATASET_PATH = os.path.join(DATASETS_PATH, 'banana')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
 DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
 
 TRAIN_PATH = os.path.join(DATASET_PATH, 'train')

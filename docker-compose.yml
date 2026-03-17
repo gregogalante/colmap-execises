@@ -1,0 +1,12 @@
+services:
+  pipeline:
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    volumes:
+      - ./datasets:/app/datasets
+    environment:
+      # Override dataset name at runtime: docker compose run -e DATASET=south-building colmap
+      - DATASET=${DATASET:-banana}

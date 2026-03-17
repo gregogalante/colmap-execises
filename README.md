@@ -1,10 +1,11 @@
 # Play Colmap
 
+
 ## Setup
 
 ```bash
 # dipendenze base
-pip3 install pycolmap pillow
+docker compose up --build
 ```
 
 ## Util links
