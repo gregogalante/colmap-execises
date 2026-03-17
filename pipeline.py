@@ -4,6 +4,7 @@ import shutil
 import pycolmap
 import numpy as np
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial import cKDTree
 
 from libs.read_write_model import read_cameras_binary, write_cameras_text, read_images_binary, write_images_text
@@ -15,8 +16,8 @@ DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
 # Change configs
 # -----------------------------------------------------------------------------
 
-DATASET_PATH = os.path.join(DATASETS_PATH, 'banana')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
-DATASET_RESET = False  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
+DATASET_PATH = os.path.join(DATASETS_PATH, 'over-office-1')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
+DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
 
 # -----------------------------------------------------------------------------
 
@@ -79,25 +80,31 @@ def build_images():
     return
   
   os.makedirs(IMAGES_PATH, exist_ok=True)
-  for filename in os.listdir(TRAIN_PATH):
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-      source_path = os.path.join(TRAIN_PATH, filename)
-      dest_path = os.path.join(IMAGES_PATH, filename)
-      try:
-        with Image.open(source_path) as img:
-          width, height = img.size
-          max_dimension = max(width, height)
-          if max_dimension > IMAGE_MAX_DIMENSION:
-            scale = IMAGE_MAX_DIMENSION / max_dimension
-            new_size = (int(width * scale), int(height * scale))
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
-            print_info(f"Resized image {filename} from ({width}, {height}) to {new_size}.")
-          img.save(dest_path)
-          print_success(f"Copied image {filename} to images path.")
-      except Exception as e:
-        print_error(f"Failed to process image {filename}: {e}")
-    else:
+
+  def process_image(filename):
+    if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
       print_warning(f"Skipping non-image file: {filename}")
+      return
+    source_path = os.path.join(TRAIN_PATH, filename)
+    dest_path = os.path.join(IMAGES_PATH, filename)
+    try:
+      with Image.open(source_path) as img:
+        width, height = img.size
+        max_dimension = max(width, height)
+        if max_dimension > IMAGE_MAX_DIMENSION:
+          scale = IMAGE_MAX_DIMENSION / max_dimension
+          new_size = (int(width * scale), int(height * scale))
+          img = img.resize(new_size, Image.Resampling.LANCZOS)
+          print_info(f"Resized image {filename} from ({width}, {height}) to {new_size}.")
+        img.save(dest_path)
+        print_success(f"Copied image {filename} to images path.")
+    except Exception as e:
+      print_error(f"Failed to process image {filename}: {e}")
+
+  with ThreadPoolExecutor() as executor:
+    futures = {executor.submit(process_image, f): f for f in os.listdir(TRAIN_PATH)}
+    for future in as_completed(futures):
+      future.result()
 
 ##############################################################################
 # EXTRACT FEATURES
