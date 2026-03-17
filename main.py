@@ -8,12 +8,21 @@ from libs.read_write_model import read_cameras_binary, write_cameras_text, read_
 IMAGE_MAX_DIMENSION = 1024
 
 DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
-DATASET_PATH = os.path.join(DATASETS_PATH, 'banana')
+DATASET_PATH = os.path.join(DATASETS_PATH, 'home')
+DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
 
 TRAIN_PATH = os.path.join(DATASET_PATH, 'train')
 IMAGES_PATH = os.path.join(DATASET_PATH, 'images')
 DATABASE_PATH = os.path.join(DATASET_PATH, 'database.db')
 SFM_PATH = os.path.join(DATASET_PATH, 'sfm')
+
+if DATASET_RESET:
+  if os.path.exists(IMAGES_PATH):
+    shutil.rmtree(IMAGES_PATH)
+  if os.path.exists(DATABASE_PATH):
+    os.remove(DATABASE_PATH)
+  if os.path.exists(SFM_PATH):
+    shutil.rmtree(SFM_PATH)
 
 ##############################################################################
 # PRINT HELPERS
