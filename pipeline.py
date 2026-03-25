@@ -7,7 +7,7 @@ from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial import cKDTree
 
-from libs.read_write_model import read_cameras_binary, write_cameras_text, read_images_binary, write_images_text
+from libs.read_write_model import read_cameras_binary, write_cameras_text, read_images_binary, write_images_text, read_points3D_binary, write_points3D_text
 
 IMAGE_MAX_DIMENSION = 1024
 
@@ -16,7 +16,7 @@ DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
 # Change configs
 # -----------------------------------------------------------------------------
 
-DATASET_PATH = os.path.join(DATASETS_PATH, 'over-office-1')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
+DATASET_PATH = os.path.join(DATASETS_PATH, 'home')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
 DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
 
 # -----------------------------------------------------------------------------
@@ -188,6 +188,8 @@ def build_sfm_reconstruction_txt():
   cameras_txt_path = os.path.join(sfm_reconstruction_path, "cameras.txt")
   images_bin_path = os.path.join(sfm_reconstruction_path, "images.bin")
   images_txt_path = os.path.join(sfm_reconstruction_path, "images.txt")
+  points3D_bin_path = os.path.join(sfm_reconstruction_path, "points3D.bin")
+  points3D_txt_path = os.path.join(sfm_reconstruction_path, "points3D.txt")
 
   if os.path.exists(cameras_txt_path) and os.path.exists(images_txt_path):
     print_info(f"SFM reconstruction TXT files already exist. Skipping TXT export.")
@@ -198,6 +200,8 @@ def build_sfm_reconstruction_txt():
   write_cameras_text(cameras, cameras_txt_path)
   images = read_images_binary(images_bin_path)
   write_images_text(images, images_txt_path)
+  points3D = read_points3D_binary(points3D_bin_path)
+  write_points3D_text(points3D, points3D_txt_path)
   print_success(f"SFM reconstruction cameras exported to {cameras_txt_path}.")
   print_success(f"SFM reconstruction images exported to {images_txt_path}.")
 
