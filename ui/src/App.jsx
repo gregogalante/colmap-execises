@@ -1,5 +1,83 @@
+import { useState, useEffect, useCallback } from 'react';
+import { fetchDatasets, fetchCameras, fetchRelocations } from './api';
+import Sidebar from './components/Sidebar';
+import Viewer3D from './components/Viewer3D';
+
 function App() {
-  return null
+  const [datasets, setDatasets] = useState([]);
+  const [selectedDataset, setSelectedDataset] = useState(null);
+  const [cameras, setCameras] = useState([]);
+  const [activeImages, setActiveImages] = useState(new Set());
+  const [relocations, setRelocations] = useState([]);
+  const [showRelocations, setShowRelocations] = useState(true);
+
+  useEffect(() => {
+    fetchDatasets().then(setDatasets);
+    fetchRelocations().then(setRelocations);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDataset) {
+      setCameras([]);
+      setActiveImages(new Set());
+      return;
+    }
+    fetchCameras(selectedDataset).then(setCameras);
+    setActiveImages(new Set());
+  }, [selectedDataset]);
+
+  const toggleImage = useCallback((imageName) => {
+    setActiveImages(prev => {
+      const next = new Set(prev);
+      if (next.has(imageName)) next.delete(imageName);
+      else next.add(imageName);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setActiveImages(new Set(cameras.map(c => c.image_name)));
+  }, [cameras]);
+
+  const clearAll = useCallback(() => {
+    setActiveImages(new Set());
+  }, []);
+
+  const filteredRelocations = relocations.filter(
+    r => r.dataset_name === selectedDataset && r.success
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-950 text-gray-100">
+      <Sidebar
+        datasets={datasets}
+        selectedDataset={selectedDataset}
+        onSelectDataset={setSelectedDataset}
+        cameras={cameras}
+        activeImages={activeImages}
+        onToggleImage={toggleImage}
+        onSelectAll={selectAll}
+        onClearAll={clearAll}
+        relocations={filteredRelocations}
+        showRelocations={showRelocations}
+        onToggleRelocations={() => setShowRelocations(v => !v)}
+      />
+      <div className="flex-1 relative">
+        {selectedDataset ? (
+          <Viewer3D
+            dataset={selectedDataset}
+            cameras={cameras}
+            activeImages={activeImages}
+            relocations={showRelocations ? filteredRelocations : []}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Select a dataset to begin
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
