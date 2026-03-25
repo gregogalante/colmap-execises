@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import shutil
 import sqlite3
 import tempfile
@@ -10,8 +11,6 @@ import numpy as np
 from PIL import Image
 from scipy.spatial import cKDTree
 import pycolmap
-
-IMAGE_MAX_DIMENSION = 1024
 
 ##############################################################################
 # PRINT HELPERS
@@ -123,14 +122,14 @@ def build_3d_descriptor_index(recon, database_path):
 # PREPARE QUERY IMAGE
 ##############################################################################
 
-def prepare_query_image(image_path, tmp_dir):
-  """Resize query image to IMAGE_MAX_DIMENSION and save into tmp_dir."""
+def prepare_query_image(image_path, tmp_dir, image_max_dimension):
+  """Resize query image to image_max_dimension and save into tmp_dir."""
   with Image.open(image_path) as img:
     img = img.convert("RGB")
     width, height = img.size
     max_dim = max(width, height)
-    if max_dim > IMAGE_MAX_DIMENSION:
-      scale = IMAGE_MAX_DIMENSION / max_dim
+    if max_dim > image_max_dimension:
+      scale = image_max_dimension / max_dim
       new_size = (int(width * scale), int(height * scale))
       img = img.resize(new_size, Image.Resampling.LANCZOS)
       print_info(f"Resized query image from ({width}, {height}) to {new_size}")
@@ -277,7 +276,7 @@ def run_pnp(points2D, points3D, camera):
     print_error(f"Too few 2D-3D correspondences: {len(points2D)} (need at least 4)")
     return None
 
-  result = pycolmap.absolute_pose_estimation(
+  result = pycolmap.estimate_and_refine_absolute_pose(
     points2D.astype(np.float64),
     points3D.astype(np.float64),
     camera,
@@ -328,6 +327,15 @@ def main():
       print_error(f"{label} not found: {path}")
       sys.exit(1)
 
+  config_path = os.path.join(dataset_path, "config.json")
+  if not os.path.exists(config_path):
+    print_error(f"config.json not found in {dataset_path}. Run pipeline.py first.")
+    sys.exit(1)
+  with open(config_path) as f:
+    config = json.load(f)
+  image_max_dimension = config["image_max_dimension"]
+  print_info(f"Loaded config: image_max_dimension={image_max_dimension}")
+
   print_step("Load SfM Reconstruction")
   recon = load_reconstruction(sfm_path)
 
@@ -337,7 +345,7 @@ def main():
   tmp_dir = tempfile.mkdtemp(prefix="reloc_")
   try:
     print_step("Prepare Query Image")
-    resized_path = prepare_query_image(image_path, tmp_dir)
+    resized_path = prepare_query_image(image_path, tmp_dir, image_max_dimension)
     tmp_db_path = os.path.join(tmp_dir, "query.db")
 
     print_step("Extract Query Features")

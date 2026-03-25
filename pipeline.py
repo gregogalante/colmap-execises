@@ -1,6 +1,9 @@
 import os
+import sys
+import json
 import time
 import shutil
+import argparse
 import pycolmap
 import numpy as np
 from PIL import Image
@@ -10,29 +13,6 @@ from scipy.spatial import cKDTree
 from libs.read_write_model import read_cameras_binary, write_cameras_text, read_images_binary, write_images_text, read_points3D_binary, write_points3D_text
 
 IMAGE_MAX_DIMENSION = 1024
-
-DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
-
-# Change configs
-# -----------------------------------------------------------------------------
-
-DATASET_PATH = os.path.join(DATASETS_PATH, 'home')  # Change this to your dataset name (e.g., 'building1', 'building2', etc.)
-DATASET_RESET = True  # Set to True to reset the dataset by deleting existing images, database, and SFM reconstruction
-
-# -----------------------------------------------------------------------------
-
-TRAIN_PATH = os.path.join(DATASET_PATH, 'train')
-IMAGES_PATH = os.path.join(DATASET_PATH, 'images')
-DATABASE_PATH = os.path.join(DATASET_PATH, 'database.db')
-SFM_PATH = os.path.join(DATASET_PATH, 'sfm')
-
-if DATASET_RESET:
-  if os.path.exists(IMAGES_PATH):
-    shutil.rmtree(IMAGES_PATH)
-  if os.path.exists(DATABASE_PATH):
-    os.remove(DATABASE_PATH)
-  if os.path.exists(SFM_PATH):
-    shutil.rmtree(SFM_PATH)
 
 ##############################################################################
 # PRINT HELPERS
@@ -67,26 +47,36 @@ def print_step(message):
   print(f"{color}{'='*100}{reset}\n")
 
 ##############################################################################
+# ARGS
+##############################################################################
+
+def parse_args():
+  parser = argparse.ArgumentParser(description="COLMAP SfM pipeline")
+  parser.add_argument("--dataset", required=True, help="Path to dataset directory (e.g. datasets/home)")
+  parser.add_argument("--reset", action="store_true", help="Reset the dataset by deleting existing images, database, and SFM reconstruction")
+  return parser.parse_args()
+
+##############################################################################
 # BUILD IMAGES
 ##############################################################################
 
-def build_images():
-  if os.path.exists(IMAGES_PATH) and os.listdir(IMAGES_PATH):
-    print_info(f"Images path {IMAGES_PATH} already exists and is not empty. Skipping image build.")
+def build_images(train_path, images_path):
+  if os.path.exists(images_path) and os.listdir(images_path):
+    print_info(f"Images path {images_path} already exists and is not empty. Skipping image build.")
     return
-  
-  if not os.path.exists(TRAIN_PATH):
-    print_error(f"Train path {TRAIN_PATH} does not exist. Cannot build images.")
+
+  if not os.path.exists(train_path):
+    print_error(f"Train path {train_path} does not exist. Cannot build images.")
     return
-  
-  os.makedirs(IMAGES_PATH, exist_ok=True)
+
+  os.makedirs(images_path, exist_ok=True)
 
   def process_image(filename):
     if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
       print_warning(f"Skipping non-image file: {filename}")
       return
-    source_path = os.path.join(TRAIN_PATH, filename)
-    dest_path = os.path.join(IMAGES_PATH, filename)
+    source_path = os.path.join(train_path, filename)
+    dest_path = os.path.join(images_path, filename)
     try:
       with Image.open(source_path) as img:
         width, height = img.size
@@ -102,7 +92,7 @@ def build_images():
       print_error(f"Failed to process image {filename}: {e}")
 
   with ThreadPoolExecutor() as executor:
-    futures = {executor.submit(process_image, f): f for f in os.listdir(TRAIN_PATH)}
+    futures = {executor.submit(process_image, f): f for f in os.listdir(train_path)}
     for future in as_completed(futures):
       future.result()
 
@@ -110,47 +100,47 @@ def build_images():
 # EXTRACT FEATURES
 ##############################################################################
 
-def extract_features():
-  if not os.path.exists(IMAGES_PATH) or not os.listdir(IMAGES_PATH):
-    print_error(f"Images path {IMAGES_PATH} does not exist or is empty. Cannot extract features.")
+def extract_features(database_path, images_path):
+  if not os.path.exists(images_path) or not os.listdir(images_path):
+    print_error(f"Images path {images_path} does not exist or is empty. Cannot extract features.")
     return
 
   print_info("Extracting features using pycolmap...")
-  pycolmap.extract_features(DATABASE_PATH, IMAGES_PATH)
+  pycolmap.extract_features(database_path, images_path)
   print_success("Feature extraction completed.")
 
 ##############################################################################
 # MATCH FEATURES
 ##############################################################################
 
-def match_features():
-  if not os.path.exists(DATABASE_PATH):
-    print_error(f"Database path {DATABASE_PATH} does not exist. Cannot perform matching.")
+def match_features(database_path):
+  if not os.path.exists(database_path):
+    print_error(f"Database path {database_path} does not exist. Cannot perform matching.")
     return
 
   print_info("Performing exhaustive matching using pycolmap...")
-  pycolmap.match_exhaustive(DATABASE_PATH)
+  pycolmap.match_exhaustive(database_path)
   print_success("Exhaustive matching completed.")
 
 ##############################################################################
 # BUILD SFM RECONSTRUCTION
 ##############################################################################
 
-def build_sfm_reconstruction():
-  if not os.path.exists(IMAGES_PATH) or not os.listdir(IMAGES_PATH):
-    print_error(f"Images path {IMAGES_PATH} does not exist or is empty. Cannot build SFM reconstruction.")
+def build_sfm_reconstruction(database_path, images_path, sfm_path):
+  if not os.path.exists(images_path) or not os.listdir(images_path):
+    print_error(f"Images path {images_path} does not exist or is empty. Cannot build SFM reconstruction.")
     return
 
-  sfm_reconstruction_path = os.path.join(SFM_PATH, "0")
+  sfm_reconstruction_path = os.path.join(sfm_path, "0")
   if os.path.exists(sfm_reconstruction_path) and os.listdir(sfm_reconstruction_path):
     print_info(f"SFM reconstruction path {sfm_reconstruction_path} already exists and is not empty. Skipping SFM reconstruction.")
     return
-  
-  if not os.path.exists(SFM_PATH):
-    os.makedirs(SFM_PATH, exist_ok=True)
+
+  if not os.path.exists(sfm_path):
+    os.makedirs(sfm_path, exist_ok=True)
 
   print_info("Running incremental mapping to build SFM reconstruction using pycolmap...")
-  reconstructions = pycolmap.incremental_mapping(DATABASE_PATH, IMAGES_PATH, SFM_PATH)
+  reconstructions = pycolmap.incremental_mapping(database_path, images_path, sfm_path)
   reconstruction = reconstructions[0]
   print(reconstruction.summary())
   print_success("SFM reconstruction completed.")
@@ -159,13 +149,13 @@ def build_sfm_reconstruction():
 # BUILD SFM RECONSTRUCTION PLY
 ##############################################################################
 
-def build_sfm_reconstruction_ply():
-  if not os.path.exists(SFM_PATH):
-    print_error(f"SFM path {SFM_PATH} does not exist. Cannot build SFM reconstruction PLY.")
+def build_sfm_reconstruction_ply(sfm_path):
+  if not os.path.exists(sfm_path):
+    print_error(f"SFM path {sfm_path} does not exist. Cannot build SFM reconstruction PLY.")
     return
 
-  sfm_reconstruction_path = os.path.join(SFM_PATH, "0")
-  sfm_reconstruction_ply_path = os.path.join(SFM_PATH, "reconstruction.ply")
+  sfm_reconstruction_path = os.path.join(sfm_path, "0")
+  sfm_reconstruction_ply_path = os.path.join(sfm_path, "reconstruction.ply")
   if os.path.exists(sfm_reconstruction_ply_path):
     print_info(f"SFM reconstruction PLY path {sfm_reconstruction_ply_path} already exists. Skipping PLY export.")
     return
@@ -178,12 +168,12 @@ def build_sfm_reconstruction_ply():
 # BUILD SFM RECONSTRUCTION TXT
 ##############################################################################
 
-def build_sfm_reconstruction_txt():
-  if not os.path.exists(SFM_PATH):
-    print_error(f"SFM path {SFM_PATH} does not exist. Cannot build SFM reconstruction TXT.")
+def build_sfm_reconstruction_txt(sfm_path):
+  if not os.path.exists(sfm_path):
+    print_error(f"SFM path {sfm_path} does not exist. Cannot build SFM reconstruction TXT.")
     return
 
-  sfm_reconstruction_path = os.path.join(SFM_PATH, "0")
+  sfm_reconstruction_path = os.path.join(sfm_path, "0")
   cameras_bin_path = os.path.join(sfm_reconstruction_path, "cameras.bin")
   cameras_txt_path = os.path.join(sfm_reconstruction_path, "cameras.txt")
   images_bin_path = os.path.join(sfm_reconstruction_path, "images.bin")
@@ -196,7 +186,7 @@ def build_sfm_reconstruction_txt():
     return
 
   print_info("Converting SFM reconstruction from BIN to TXT...")
-  cameras = read_cameras_binary(cameras_bin_path) 
+  cameras = read_cameras_binary(cameras_bin_path)
   write_cameras_text(cameras, cameras_txt_path)
   print_success(f"SFM reconstruction cameras exported to {cameras_txt_path}.")
   images = read_images_binary(images_bin_path)
@@ -210,13 +200,13 @@ def build_sfm_reconstruction_txt():
 # BUILD SFM RECONSTRUCTION transforms.json
 ##############################################################################
 
-def build_sfm_reconstruction_transforms_json():
-  if not os.path.exists(SFM_PATH):
-    print_error(f"SFM path {SFM_PATH} does not exist. Cannot build SFM reconstruction transforms.json.")
+def build_sfm_reconstruction_transforms_json(images_path, sfm_path):
+  if not os.path.exists(sfm_path):
+    print_error(f"SFM path {sfm_path} does not exist. Cannot build SFM reconstruction transforms.json.")
     return
 
-  sfm_reconstruction_path = os.path.join(SFM_PATH, "0")
-  sfm_transforms_json_path = os.path.join(SFM_PATH, "transforms.json")
+  sfm_reconstruction_path = os.path.join(sfm_path, "0")
+  sfm_transforms_json_path = os.path.join(sfm_path, "transforms.json")
 
   if os.path.exists(sfm_transforms_json_path):
     print_info(f"SFM reconstruction transforms.json path {sfm_transforms_json_path} already exists. Skipping transforms.json export.")
@@ -226,12 +216,12 @@ def build_sfm_reconstruction_transforms_json():
   command = f"python colmap2nerf.py \
     --colmap_matcher exhaustive \
     --aabb_scale 16 \
-    --images {IMAGES_PATH} \
+    --images {images_path} \
     --text {sfm_reconstruction_path} \
     --out {sfm_transforms_json_path} \
   "
   os.system(command)
-  
+
   if not os.path.exists(sfm_transforms_json_path):
     print_error(f"Failed to export transforms.json to {sfm_transforms_json_path}.")
     return
@@ -241,24 +231,53 @@ def build_sfm_reconstruction_transforms_json():
 # MAIN
 ##############################################################################
 
-if __name__ == "__main__":
+def main():
+  args = parse_args()
+
+  dataset_path = args.dataset
+  train_path = os.path.join(dataset_path, 'train')
+  images_path = os.path.join(dataset_path, 'images')
+  database_path = os.path.join(dataset_path, 'database.db')
+  sfm_path = os.path.join(dataset_path, 'sfm')
+
+  if not os.path.exists(dataset_path):
+    print_error(f"Dataset path {dataset_path} does not exist.")
+    sys.exit(1)
+
+  config_path = os.path.join(dataset_path, 'config.json')
+  config = {"image_max_dimension": IMAGE_MAX_DIMENSION}
+  with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+  print_info(f"Config saved to {config_path}")
+
+  if args.reset:
+    if os.path.exists(images_path):
+      shutil.rmtree(images_path)
+    if os.path.exists(database_path):
+      os.remove(database_path)
+    if os.path.exists(sfm_path):
+      shutil.rmtree(sfm_path)
+
   time_start = time.time()
   print_step("🚀 Build Images")
-  build_images()
+  build_images(train_path, images_path)
   print_step("🚀 Extract Features")
-  extract_features()
+  extract_features(database_path, images_path)
   print_step("🚀 Match Features")
-  match_features()
+  match_features(database_path)
   print_step("🚀 Build SFM Reconstruction")
-  build_sfm_reconstruction()
+  build_sfm_reconstruction(database_path, images_path, sfm_path)
   print_step("🚀 Build SFM Reconstruction PLY")
-  build_sfm_reconstruction_ply()
+  build_sfm_reconstruction_ply(sfm_path)
   print_step("🚀 Build SFM Reconstruction TXT")
-  build_sfm_reconstruction_txt()
+  build_sfm_reconstruction_txt(sfm_path)
   print_step("🚀 Build SFM Reconstruction transforms.json")
-  build_sfm_reconstruction_transforms_json()
+  build_sfm_reconstruction_transforms_json(images_path, sfm_path)
 
   print_step("✅ Pipeline completed")
   time_end = time.time()
   time_total = time_end - time_start
   print_success(f"Total execution time: {time_total:.2f} seconds")
+
+if __name__ == "__main__":
+  main()

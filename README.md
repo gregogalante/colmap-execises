@@ -1,9 +1,10 @@
 # Play Colmap
 
-## Setup
+## Running
 
 ```bash
-# ....
+python pipeline.py --dataset datasets/home --reset
+python relocation.py --dataset datasets/home --image inputs/relocation_home.jpg
 ```
 
 ## Util links
