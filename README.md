@@ -3,8 +3,8 @@
 ## Running
 
 ```bash
-python pipeline.py --dataset datasets/home --reset
-python relocation.py --dataset datasets/home --image inputs/relocation_home.jpg
+python pipeline.py --dataset storage/datasets/home --reset
+python relocation.py --dataset storage/datasets/home --image storage/inputs/relocation_home.jpg --output storage/relocations/home
 ```
 
 ## Util links

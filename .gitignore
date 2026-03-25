@@ -1,8 +1,11 @@
 __pycache__/
 .DS_Store
 
-datasets/*
-!datasets/.keep
+storage/datasets/*
+!storage/datasets/.keep
 
-inputs/*
-!inputs/.keep
+storage/relocations/*
+!storage/relocations/.keep
+
+storage/inputs/*
+!storage/inputs/.keep

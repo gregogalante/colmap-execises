@@ -53,6 +53,7 @@ def parse_args():
   parser.add_argument("--dataset", required=True, help="Path to dataset directory (e.g. datasets/home)")
   parser.add_argument("--image", required=True, help="Path to query image")
   parser.add_argument("--ratio", type=float, default=0.75, help="Lowe ratio test threshold (default: 0.75)")
+  parser.add_argument("--output", default=None, help="Path to output directory (saves image and JSON with relocation data)")
   return parser.parse_args()
 
 ##############################################################################
@@ -310,6 +311,44 @@ def print_pose_result(result):
   for row in R:
     print_info(f"    [{row[0]:+.6f}  {row[1]:+.6f}  {row[2]:+.6f}]")
 
+
+def build_relocation_data(result, image_path, dataset_path, ratio):
+  """Build a JSON-serializable dict with relocation results."""
+  data = {
+    "query_image": os.path.abspath(image_path),
+    "dataset": os.path.abspath(dataset_path),
+    "ratio": ratio,
+    "success": result is not None,
+  }
+  if result is not None:
+    cam_from_world = result["cam_from_world"]
+    R = cam_from_world.rotation.matrix()
+    t = cam_from_world.translation
+    camera_center = (-R.T @ t).tolist()
+    inlier_mask = result.get("inlier_mask", [])
+    data.update({
+      "num_inliers": result.get("num_inliers"),
+      "num_correspondences": len(inlier_mask),
+      "camera_center": camera_center,
+      "translation": t.tolist(),
+      "rotation_matrix": [row.tolist() for row in R],
+    })
+  return data
+
+
+def save_output(output_dir, image_path, relocation_data):
+  os.makedirs(output_dir, exist_ok=True)
+  # Copy query image
+  dst_image = os.path.join(output_dir, os.path.basename(image_path))
+  shutil.copy2(image_path, dst_image)
+  print_info(f"Saved image to {dst_image}")
+  # Save JSON
+  json_name = os.path.splitext(os.path.basename(image_path))[0] + ".json"
+  dst_json = os.path.join(output_dir, json_name)
+  with open(dst_json, "w") as f:
+    json.dump(relocation_data, f, indent=2)
+  print_info(f"Saved relocation data to {dst_json}")
+
 ##############################################################################
 # MAIN
 ##############################################################################
@@ -370,6 +409,10 @@ def main():
 
     print_step("Results")
     print_pose_result(result)
+
+    if args.output:
+      relocation_data = build_relocation_data(result, image_path, dataset_path, args.ratio)
+      save_output(args.output, image_path, relocation_data)
 
   finally:
     shutil.rmtree(tmp_dir, ignore_errors=True)
