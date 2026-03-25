@@ -1,11 +1,9 @@
 # Play Colmap
 
-
 ## Setup
 
 ```bash
-# dipendenze base
-docker compose up --build
+# ....
 ```
 
 ## Util links

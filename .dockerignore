@@ -1,6 +1,0 @@
-datasets/
-.git/
-.claude/
-__pycache__/
-*.pyc
-*.pyo
