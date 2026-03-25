@@ -3,3 +3,6 @@ __pycache__/
 
 datasets/*
 !datasets/.keep
+
+inputs/*
+!inputs/.keep
