@@ -198,12 +198,13 @@ def build_sfm_reconstruction_txt():
   print_info("Converting SFM reconstruction from BIN to TXT...")
   cameras = read_cameras_binary(cameras_bin_path) 
   write_cameras_text(cameras, cameras_txt_path)
+  print_success(f"SFM reconstruction cameras exported to {cameras_txt_path}.")
   images = read_images_binary(images_bin_path)
   write_images_text(images, images_txt_path)
+  print_success(f"SFM reconstruction images exported to {images_txt_path}.")
   points3D = read_points3D_binary(points3D_bin_path)
   write_points3D_text(points3D, points3D_txt_path)
-  print_success(f"SFM reconstruction cameras exported to {cameras_txt_path}.")
-  print_success(f"SFM reconstruction images exported to {images_txt_path}.")
+  print_success(f"SFM reconstruction points3D exported to {points3D_txt_path}.")
 
 ##############################################################################
 # BUILD SFM RECONSTRUCTION transforms.json
