@@ -52,7 +52,7 @@ def print_step(message):
 
 def parse_args():
   parser = argparse.ArgumentParser(description="COLMAP SfM pipeline")
-  parser.add_argument("--dataset", required=True, help="Path to dataset directory (e.g. datasets/home)")
+  parser.add_argument("--dataset", required=True, help="Path to dataset directory (e.g. storage/datasets/home)")
   parser.add_argument("--reset", action="store_true", help="Reset the dataset by deleting existing images, database, and SFM reconstruction")
   return parser.parse_args()
 
