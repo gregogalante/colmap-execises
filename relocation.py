@@ -52,7 +52,7 @@ def parse_args():
   parser = argparse.ArgumentParser(description="Visual camera relocalization using COLMAP SfM")
   parser.add_argument("--dataset", required=True, help="Path to dataset directory (e.g. datasets/home)")
   parser.add_argument("--image", required=True, help="Path to query image")
-  parser.add_argument("--ratio", type=float, default=0.75, help="Lowe ratio test threshold (default: 0.75)")
+  parser.add_argument("--ratio", type=float, default=0.5, help="Lowe ratio test threshold (default: 0.75)")
   parser.add_argument("--output", default=None, help="Path to output directory (saves image and JSON with relocation data)")
   return parser.parse_args()
 
@@ -231,6 +231,15 @@ def build_camera_for_query(image_path, recon):
   Tries EXIF focal length first; falls back to scaling the reconstruction's
   most common camera to the query image dimensions.
   """
+  # Strategy 0: if image already exists in reconstruction, use its exact camera
+  query_name = os.path.basename(image_path)
+  for image in recon.images.values():
+    if image.name == query_name:
+      camera = recon.cameras[image.camera_id]
+      print_info(f"Camera from existing reconstruction: {camera.model.name} "
+                 f"{camera.width}x{camera.height} f={camera.params[0]:.1f}")
+      return camera
+
   # Strategy 1: EXIF
   try:
     cam = pycolmap.infer_camera_from_image(image_path)
